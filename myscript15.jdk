@@ -1,0 +1,13 @@
+piepline {
+  agent any
+   stages {
+      stage('Pull code from github') {
+         steps {
+                 echo 'pulling code from github repo...'
+                 git branch: 'master', url: 'https://github.com'
+                 echo 'code pulled seccess'
+         }
+
+      }
+    }
+}
