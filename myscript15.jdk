@@ -7,17 +7,14 @@ pipeline {
                  git branch: 'master', url: 'https://github.com/premanand-dalvi/jenkins-project.git'
                  echo 'code pulled seccess'
          }
-
       }
-      stage('build Backend') {
-           steps {
-              dir('backend') {
-                   sh 'mvn clean package -DskipTests'
-
-              }
-           }
+      stage('Build Backend') {
+         steps {
+            dir('backend') {
+               sh 'mvn clean package -DskipTests'
+            }
+         }
       }
-
-
-   }
+    }
 }
+
