@@ -1,13 +1,14 @@
-pipeline {
-  agent any
-   stages {
-      stage('Pull code from github') {
-         steps {
-                 echo 'pulling code from github repo...'
-                 git branch: 'master', url: 'https://github.com/premanand-dalvi/jenkins-project.git'
-                 echo 'code pulled seccess'
-         }
-
-      }
-    }
+pipeline { 
+    agent any 
+    
+    stages { 
+        stage('Pull code from github') { 
+            steps { 
+                echo 'Pulling code from GitHub repo...' 
+                git branch: 'master', url: 'https://github.com/premanand-dalvi/jenkins-project.git' 
+                echo 'Code pulled successfully!' 
+            } 
+        } 
+    } 
 }
+
