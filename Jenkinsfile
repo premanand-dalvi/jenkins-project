@@ -1,40 +1,87 @@
 pipeline {
-   agent any
+    agent any
 
-   stages {
-      stage('Pull code from github') {
-         steps {
-            git branch: 'master', url: 'https://github.com/premanand-dalvi/jenkins-project.git'
-         }
-      }
+    environment {
+        DOCKER_USER  = "premananddalvi" // तुमचे खरे Docker Hub युझरनेम टाका
+        BACKEND_IMG  = "${DOCKER_USER}/jenkins-proj-backend"
+        FRONTEND_IMG = "${DOCKER_USER}/jenkins-proj-frontend"
+    }
 
-      stage('Stop Existing App') {
-         steps {
-            sh '''
-               PID=$(pgrep -f "student-registration-backend" || true)
-               if [ -n "$PID" ]; then
-                  echo "Stopping PID: $PID"
-                  kill -9 $PID || true
-               fi
-            '''
-         }
-      }
-
-      stage('Build Backend') {
-         steps {
-            dir('backend') {
-               sh 'mvn clean package -DskipTests'
+    stages {
+        stage('1. Git Checkout') {
+            steps {
+                git branch: 'master', url: 'https://github.com/premanand-dalvi/jenkins-project.git'
             }
-         }
-      }
+        }
 
-      stage('Deploy Backend') {
-         steps {
-            sh '''
-               nohup java -jar backend/target/student-registration-backend-0.0.1-SNAPSHOT.jar > backend.log 2>&1 &
-               sleep 5
-            '''
-         }
-      }
-   }
+        stage('2. SonarQube Code Scan') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    sonar-scanner \
+                      -Dsonar.projectKey=jenkins-project \
+                      -Dsonar.sources=backend,frontend
+                    '''
+                }
+            }
+        }
+
+        stage('3. Build Docker Images') {
+            parallel {
+                stage('Backend Image') {
+                    steps {
+                        dir('backend') {
+                            sh "docker build -t ${BACKEND_IMG}:${BUILD_NUMBER} ."
+                        }
+                    }
+                }
+                stage('Frontend Image') {
+                    steps {
+                        dir('frontend') {
+                            sh "docker build -t ${FRONTEND_IMG}:${BUILD_NUMBER} ."
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('4. Trivy Security Scan') {
+            steps {
+                sh "trivy image --severity HIGH,CRITICAL ${BACKEND_IMG}:${BUILD_NUMBER}"
+                sh "trivy image --severity HIGH,CRITICAL ${FRONTEND_IMG}:${BUILD_NUMBER}"
+            }
+        }
+
+        stage('5. Push to Docker Hub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                        sh 'echo $PASS | docker login -u $USER --password-stdin'
+                        sh "docker push ${BACKEND_IMG}:${BUILD_NUMBER}"
+                        sh "docker push ${FRONTEND_IMG}:${BUILD_NUMBER}"
+                    }
+                }
+            }
+        }
+
+        stage('6. Deploy Live Website') {
+            steps {
+                sh '''
+                docker rm -f live-backend live-frontend || true
+                docker network create prod-net || true
+                docker run -d --name live-backend --network prod-net -p 5000:5000 ${BACKEND_IMG}:${BUILD_NUMBER}
+                docker run -d --name live-frontend --network prod-net -p 3000:80 ${FRONTEND_IMG}:${BUILD_NUMBER}
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker image prune -f'
+        }
+        success {
+            echo 'अभिनंदन! संपूर्ण पाईपलाईन यशस्वी झाली! http://localhost:3000 वर वेबसाइट पहा.'
+        }
+    }
 }
