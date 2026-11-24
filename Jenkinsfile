@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_USER  = "premananddalvi" // तुमचे खरे Docker Hub युझरनेम टाका
+        DOCKER_USER  = "premananddalvi"
         BACKEND_IMG  = "${DOCKER_USER}/jenkins-proj-backend"
         FRONTEND_IMG = "${DOCKER_USER}/jenkins-proj-frontend"
     }
@@ -81,7 +81,7 @@ pipeline {
             sh 'docker image prune -f'
         }
         success {
-            echo 'अभिनंदन! संपूर्ण पाईपलाईन यशस्वी झाली! http://localhost:3000 वर वेबसाइट पहा.'
+            echo 'cong http://localhost:3000 website are run finally'
         }
     }
 }
